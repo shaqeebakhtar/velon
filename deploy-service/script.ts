@@ -21,6 +21,7 @@ const init = async () => {
 
   p.on('close', async () => {
     console.log('Build completed');
+
     const distFolderPath = path.join(outDirPath, 'dist');
     const distFiles = fs.readdirSync(distFolderPath, { recursive: true });
 
@@ -35,6 +36,8 @@ const init = async () => {
         });
 
         await s3Client.send(command);
+
+        console.log(`Uploaded: ${filePath}`);
       }
     }
 

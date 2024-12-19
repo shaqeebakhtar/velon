@@ -7,7 +7,13 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /home/app
-COPY main.sh main.sh
+
+COPY package*.json .
+RUN npm install
+
+COPY main.sh script.ts ./
+
 RUN chmod +x /home/app/main.sh
+RUN chmod +x /home/app/script.ts
 
 ENTRYPOINT [ "/home/app/main.sh" ]
