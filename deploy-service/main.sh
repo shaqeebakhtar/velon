@@ -15,5 +15,8 @@ fi
 echo "Cloning repository from $GIT_REPOSITORY_URL..."
 git clone "$GIT_REPOSITORY_URL" /home/app/output
 
+echo "Compiling TypeScript file..."
+tsc script.ts
+
 echo "Executing script..."
-exec node script.ts
+exec node script.js

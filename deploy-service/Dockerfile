@@ -7,6 +7,8 @@ RUN apt-get update && \
     apt-get install -y nodejs git && \
     rm -rf /var/lib/apt/lists/*
 
+RUN npm install -g typescript
+
 WORKDIR /home/app
 
 COPY package*.json .
