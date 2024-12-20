@@ -69,10 +69,14 @@ const init = async () => {
         await s3Client.send(command);
 
         console.log(`Uploaded: ${file}`);
+        publishLogs(`Uploaded: ${file}`);
       }
     }
 
     console.log('Deployment completed');
+    publishLogs('Deployment completed');
+
+    process.exit(0);
   });
 };
 
