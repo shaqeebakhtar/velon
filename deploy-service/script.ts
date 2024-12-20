@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as mime from 'mime-types';
 import * as path from 'path';
+import Redis from 'ioredis';
 
 dotenv.config();
 
@@ -13,7 +14,13 @@ const {
   AWS_SECRET_ACCESS_KEY,
   AWS_S3_BUCKET,
   PROJECT_ID,
+  REDIS_DB_URL,
 } = process.env;
+
+const publisher = new Redis(REDIS_DB_URL as string);
+const publishLogs = (log: string) => {
+  publisher.publish(`logs:${PROJECT_ID}`, JSON.stringify({ log }));
+};
 
 export const s3Client = new S3Client({
   region: AWS_S3_REGION,
@@ -24,24 +31,31 @@ export const s3Client = new S3Client({
 });
 
 const init = async () => {
+  console.log('Build started...');
+  publishLogs('Build started...');
+
   const outDirPath = path.join(__dirname, 'output');
 
   const p = exec(`cd ${outDirPath} && npm install && npm run build`);
 
   p.stdout?.on('data', (data) => {
     console.log(data.toString());
+    publishLogs(data.toString());
   });
 
   p.stdout?.on('error', (data) => {
     console.log('Error:', data.toString());
+    publishLogs(`error: ${data.toString()}`);
   });
 
   p.on('close', async () => {
     console.log('Build completed');
+    publishLogs('Build completed');
 
     const distFolderPath = path.join(outDirPath, 'dist');
     const distFiles = fs.readdirSync(distFolderPath, { recursive: true });
 
+    publishLogs('Starting to upload...');
     for (const file of distFiles) {
       const filePath = path.join(distFolderPath, file as string);
       if (!fs.lstatSync(filePath).isDirectory()) {
