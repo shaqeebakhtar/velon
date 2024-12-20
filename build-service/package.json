@@ -1,0 +1,25 @@
+{
+  "name": "build-service",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "build": "npx tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ecs": "^3.716.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "random-word-slugs": "^0.1.7"
+  }
+}
