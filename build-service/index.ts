@@ -1,7 +1,9 @@
-import express, { Express, Request, Response } from 'express';
-import dotenv from 'dotenv';
 import { ECSClient, RunTaskCommand } from '@aws-sdk/client-ecs';
+import dotenv from 'dotenv';
+import express, { Express, Request, Response } from 'express';
+import Redis from 'ioredis';
 import { generateSlug } from 'random-word-slugs';
+import { Server } from 'socket.io';
 
 dotenv.config();
 
@@ -16,10 +18,15 @@ const {
   AWS_ECS_TASK,
   AWS_ECS_ACCESS_KEY_ID,
   AWS_ECS_SECRET_ACCESS_KEY,
+  REDIS_DB_URL,
 } = process.env;
 
 const port = PORT || 9000;
 const app: Express = express();
+
+const io = new Server();
+
+const subscriber = new Redis(REDIS_DB_URL as string);
 
 app.use(express.json());
 
@@ -32,8 +39,8 @@ const ecsClient = new ECSClient({
 });
 
 app.post('/project', async (req: Request, res: Response) => {
-  const { repositoryUrl } = req.body;
-  const projectSlug = generateSlug();
+  const { repositoryUrl, slug } = req.body;
+  const projectSlug = slug ?? generateSlug();
 
   const command = new RunTaskCommand({
     cluster: AWS_ECS_CLUSTER as string,
@@ -80,6 +87,10 @@ app.post('/project', async (req: Request, res: Response) => {
               name: 'AWS_SECRET_ACCESS_KEY',
               value: AWS_S3_SECRET_ACCESS_KEY as string,
             },
+            {
+              name: 'REDIS_DB_URL',
+              value: REDIS_DB_URL as string,
+            },
           ],
         },
       ],
@@ -97,4 +108,16 @@ app.post('/project', async (req: Request, res: Response) => {
   });
 });
 
+io.on('connection', (socket) => {
+  socket.on('subscribe_logs', (slug) => {
+    socket.join(slug);
+  });
+});
+
+subscriber.psubscribe('logs:*');
+subscriber.on('pmessage', (_, channel, message) => {
+  io.to(channel).emit('log', message);
+});
+
 app.listen(port, () => console.log(`Build service is running on port ${port}`));
+io.listen(9001);
