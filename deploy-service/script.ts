@@ -4,7 +4,7 @@ import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as mime from 'mime-types';
 import * as path from 'path';
-import Redis from 'ioredis';
+import { Kafka } from 'kafkajs';
 
 dotenv.config();
 
@@ -14,12 +14,34 @@ const {
   AWS_SECRET_ACCESS_KEY,
   AWS_S3_BUCKET,
   PROJECT_ID,
-  REDIS_DB_URL,
+  DEPLOYMENT_ID,
+  KAFKA_USER,
+  KAFKA_PASSWORD,
+  KAFKA_BROKER,
 } = process.env;
 
-const publisher = new Redis(REDIS_DB_URL as string);
-const publishLogs = (log: string) => {
-  publisher.publish(`logs:${PROJECT_ID}`, JSON.stringify({ log }));
+const kafka = new Kafka({
+  brokers: [KAFKA_BROKER as string],
+  clientId: `deploy-service-${DEPLOYMENT_ID}`,
+  sasl: {
+    username: KAFKA_USER as string,
+    password: KAFKA_PASSWORD as string,
+    mechanism: 'plain',
+  },
+  ssl: {
+    ca: [fs.readFileSync(path.join(__dirname, 'kafka.pem'), 'utf-8')],
+  },
+});
+
+const producer = kafka.producer();
+
+const publishLogs = async (log: string) => {
+  await producer.send({
+    topic: 'deployment-logs',
+    messages: [
+      { key: 'log', value: JSON.stringify({ PROJECT_ID, DEPLOYMENT_ID, log }) },
+    ],
+  });
 };
 
 export const s3Client = new S3Client({
@@ -31,31 +53,33 @@ export const s3Client = new S3Client({
 });
 
 const init = async () => {
+  await producer.connect();
+
   console.log('Build started...');
-  publishLogs('Build started...');
+  await publishLogs('Build started...');
 
   const outDirPath = path.join(__dirname, 'output');
 
   const p = exec(`cd ${outDirPath} && npm install && npm run build`);
 
-  p.stdout?.on('data', (data) => {
+  p.stdout?.on('data', async (data) => {
     console.log(data.toString());
-    publishLogs(data.toString());
+    await publishLogs(data.toString());
   });
 
-  p.stdout?.on('error', (data) => {
+  p.stdout?.on('error', async (data) => {
     console.log('Error:', data.toString());
-    publishLogs(`error: ${data.toString()}`);
+    await publishLogs(`error: ${data.toString()}`);
   });
 
   p.on('close', async () => {
     console.log('Build completed');
-    publishLogs('Build completed');
+    await publishLogs('Build completed');
 
     const distFolderPath = path.join(outDirPath, 'dist');
     const distFiles = fs.readdirSync(distFolderPath, { recursive: true });
 
-    publishLogs('Starting to upload...');
+    await publishLogs('Starting to upload...');
     for (const file of distFiles) {
       const filePath = path.join(distFolderPath, file as string);
       if (!fs.lstatSync(filePath).isDirectory()) {
@@ -69,12 +93,12 @@ const init = async () => {
         await s3Client.send(command);
 
         console.log(`Uploaded: ${file}`);
-        publishLogs(`Uploaded: ${file}`);
+        await publishLogs(`Uploaded: ${file}`);
       }
     }
 
     console.log('Deployment completed');
-    publishLogs('Deployment completed');
+    await publishLogs('Deployment completed');
 
     process.exit(0);
   });
