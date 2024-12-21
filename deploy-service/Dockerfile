@@ -14,7 +14,7 @@ WORKDIR /home/app
 COPY package*.json .
 RUN npm install
 
-COPY main.sh script.ts ./
+COPY main.sh script.ts kafka.pem ./
 
 RUN chmod +x /home/app/main.sh
 RUN chmod +x /home/app/script.ts
