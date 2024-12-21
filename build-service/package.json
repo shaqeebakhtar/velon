@@ -18,10 +18,12 @@
   },
   "dependencies": {
     "@aws-sdk/client-ecs": "^3.716.0",
+    "@clickhouse/client": "^1.10.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "ioredis": "^5.4.2",
+    "kafkajs": "^2.2.4",
     "random-word-slugs": "^0.1.7",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "uuid": "^11.0.3"
   }
 }

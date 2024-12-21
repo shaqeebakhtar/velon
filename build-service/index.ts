@@ -1,9 +1,13 @@
 import { ECSClient, RunTaskCommand } from '@aws-sdk/client-ecs';
+import { createClient } from '@clickhouse/client';
 import dotenv from 'dotenv';
 import express, { Express, Request, Response } from 'express';
-import Redis from 'ioredis';
+import * as fs from 'fs';
+import { Kafka } from 'kafkajs';
+import * as path from 'path';
 import { generateSlug } from 'random-word-slugs';
 import { Server } from 'socket.io';
+import { v4 as uuidv4 } from 'uuid';
 
 dotenv.config();
 
@@ -18,7 +22,13 @@ const {
   AWS_ECS_TASK,
   AWS_ECS_ACCESS_KEY_ID,
   AWS_ECS_SECRET_ACCESS_KEY,
-  REDIS_DB_URL,
+  CLICKHOUSE_URL,
+  CLICKHOUSE_DB,
+  CLICKHOUSE_USER,
+  CLICKHOUSE_PASSWORD,
+  KAFKA_BROKER,
+  KAFKA_USER,
+  KAFKA_PASSWORD,
 } = process.env;
 
 const port = PORT || 9000;
@@ -26,9 +36,27 @@ const app: Express = express();
 
 const io = new Server();
 
-const subscriber = new Redis(REDIS_DB_URL as string);
-
 app.use(express.json());
+
+const clickhouseClient = createClient({
+  host: CLICKHOUSE_URL as string,
+  database: CLICKHOUSE_DB as string,
+  username: CLICKHOUSE_USER as string,
+  password: CLICKHOUSE_PASSWORD as string,
+});
+
+const kafka = new Kafka({
+  clientId: 'build-service',
+  brokers: [KAFKA_BROKER as string],
+  sasl: {
+    username: KAFKA_USER as string,
+    password: KAFKA_PASSWORD as string,
+    mechanism: 'plain',
+  },
+  ssl: {
+    ca: [fs.readFileSync(path.join(__dirname, 'kafka.pem'), 'utf-8')],
+  },
+});
 
 const ecsClient = new ECSClient({
   region: AWS_ECS_REGION as string,
@@ -72,6 +100,10 @@ app.post('/project', async (req: Request, res: Response) => {
               value: projectSlug,
             },
             {
+              name: 'DEPLOYMENT_ID',
+              value: uuidv4(),
+            },
+            {
               name: 'AWS_S3_REGION',
               value: AWS_S3_REGION as string,
             },
@@ -88,8 +120,16 @@ app.post('/project', async (req: Request, res: Response) => {
               value: AWS_S3_SECRET_ACCESS_KEY as string,
             },
             {
-              name: 'REDIS_DB_URL',
-              value: REDIS_DB_URL as string,
+              name: 'KAFKA_BROKER',
+              value: KAFKA_BROKER as string,
+            },
+            {
+              name: 'KAFKA_USER',
+              value: KAFKA_USER as string,
+            },
+            {
+              name: 'KAFKA_PASSWORD',
+              value: KAFKA_PASSWORD as string,
             },
           ],
         },
@@ -108,15 +148,57 @@ app.post('/project', async (req: Request, res: Response) => {
   });
 });
 
+const consumer = kafka.consumer({ groupId: 'build-service-logs-consumer' });
+
+const init = async () => {
+  await consumer.connect();
+  await consumer.subscribe({ topics: ['deployment-logs'] });
+
+  await consumer.run({
+    autoCommit: false,
+    eachBatch: async ({
+      batch,
+      heartbeat,
+      commitOffsetsIfNecessary,
+      resolveOffset,
+    }) => {
+      const messages = batch.messages;
+      for (const message of messages) {
+        const { DEPLOYMENT_ID, log } = JSON.parse(
+          message?.value?.toString() as string
+        );
+
+        try {
+          const { query_id } = await clickhouseClient.insert({
+            table: 'deployment_logs',
+            values: [
+              {
+                log_id: uuidv4(),
+                deployment_id: DEPLOYMENT_ID,
+                log,
+              },
+            ],
+            format: 'JSONEachRow',
+          });
+
+          console.log(query_id);
+
+          resolveOffset(message.offset);
+          await commitOffsetsIfNecessary();
+          await heartbeat();
+        } catch (error) {
+          console.log(error);
+        }
+      }
+    },
+  });
+};
+init();
+
 io.on('connection', (socket) => {
   socket.on('subscribe_logs', (slug) => {
     socket.join(slug);
   });
-});
-
-subscriber.psubscribe('logs:*');
-subscriber.on('pmessage', (_, channel, message) => {
-  io.to(channel).emit('log', message);
 });
 
 app.listen(port, () => console.log(`Build service is running on port ${port}`));
