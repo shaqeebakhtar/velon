@@ -1,0 +1,16 @@
+name: velon
+services:
+  db:
+    container_name: velondb
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: velon
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - '5500:5432'
+    volumes:
+      - velondata:/var/lib/postgresql/data
+
+volumes:
+  velondata:
