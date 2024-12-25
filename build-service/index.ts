@@ -1,35 +1,23 @@
-import { ECSClient, RunTaskCommand } from '@aws-sdk/client-ecs';
-import { createClient } from '@clickhouse/client';
-import dotenv from 'dotenv';
+import { RunTaskCommand } from '@aws-sdk/client-ecs';
 import express, { Express, Request, Response } from 'express';
-import * as fs from 'fs';
-import { Kafka } from 'kafkajs';
-import * as path from 'path';
 import { generateSlug } from 'random-word-slugs';
 import { Server } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
-
-dotenv.config();
-
-const {
-  PORT,
-  AWS_S3_REGION,
-  AWS_S3_BUCKET,
-  AWS_S3_ACCESS_KEY_ID,
-  AWS_S3_SECRET_ACCESS_KEY,
-  AWS_ECS_REGION,
+import {
   AWS_ECS_CLUSTER,
   AWS_ECS_TASK,
-  AWS_ECS_ACCESS_KEY_ID,
-  AWS_ECS_SECRET_ACCESS_KEY,
-  CLICKHOUSE_URL,
-  CLICKHOUSE_DB,
-  CLICKHOUSE_USER,
-  CLICKHOUSE_PASSWORD,
+  AWS_S3_ACCESS_KEY_ID,
+  AWS_S3_BUCKET,
+  AWS_S3_REGION,
+  AWS_S3_SECRET_ACCESS_KEY,
   KAFKA_BROKER,
-  KAFKA_USER,
   KAFKA_PASSWORD,
-} = process.env;
+  KAFKA_USER,
+  PORT,
+} from './config';
+import { ecsClient } from './utils/aws-ecs';
+import { clickhouseClient } from './utils/clickhouse';
+import { consumer } from './utils/kafka';
 
 const port = PORT || 9000;
 const app: Express = express();
@@ -37,34 +25,6 @@ const app: Express = express();
 const io = new Server();
 
 app.use(express.json());
-
-const clickhouseClient = createClient({
-  host: CLICKHOUSE_URL as string,
-  database: CLICKHOUSE_DB as string,
-  username: CLICKHOUSE_USER as string,
-  password: CLICKHOUSE_PASSWORD as string,
-});
-
-const kafka = new Kafka({
-  clientId: 'build-service',
-  brokers: [KAFKA_BROKER as string],
-  sasl: {
-    username: KAFKA_USER as string,
-    password: KAFKA_PASSWORD as string,
-    mechanism: 'plain',
-  },
-  ssl: {
-    ca: [fs.readFileSync(path.join(__dirname, 'kafka.pem'), 'utf-8')],
-  },
-});
-
-const ecsClient = new ECSClient({
-  region: AWS_ECS_REGION as string,
-  credentials: {
-    accessKeyId: AWS_ECS_ACCESS_KEY_ID as string,
-    secretAccessKey: AWS_ECS_SECRET_ACCESS_KEY as string,
-  },
-});
 
 app.post('/project', async (req: Request, res: Response) => {
   const { repositoryUrl, slug } = req.body;
@@ -147,8 +107,6 @@ app.post('/project', async (req: Request, res: Response) => {
     },
   });
 });
-
-const consumer = kafka.consumer({ groupId: 'build-service-logs-consumer' });
 
 const init = async () => {
   await consumer.connect();
