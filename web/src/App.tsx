@@ -1,11 +1,17 @@
-import { Button } from './components/ui/button';
+import { BrowserRouter as Router, Routes, Route } from 'react-router';
+import Projects from './components/projects';
 
 function App() {
   return (
-    <>
-      <h1 className="text-3xl font-bold underline">Hello world!</h1>
-      <Button>Click Me</Button>
-    </>
+    <Router>
+      <Routes>
+        <Route path="projects">
+          <Route index element={<Projects />} />
+          <Route path=":name" element={<>name</>} />
+          <Route path="new" element={<>new</>} />
+        </Route>
+      </Routes>
+    </Router>
   );
 }
 
