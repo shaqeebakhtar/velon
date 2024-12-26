@@ -18,13 +18,22 @@ import {
 import { ecsClient } from './utils/aws-ecs';
 import { clickhouseClient } from './utils/clickhouse';
 import { consumer } from './utils/kafka';
+import { db } from './utils/db';
+import cors from 'cors';
 
 const port = PORT || 9000;
 const app: Express = express();
 
 const io = new Server();
 
+app.use(cors());
 app.use(express.json());
+
+app.get('/project', async (_, res: Response) => {
+  const projects = await db.project.findMany();
+
+  res.status(200).json(projects);
+});
 
 app.post('/project', async (req: Request, res: Response) => {
   const { repositoryUrl, slug } = req.body;
