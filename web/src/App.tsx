@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router';
-import Projects from './components/projects';
-import NewProject from './components/projects/new';
+import Projects from '@/components/projects';
+import NewProject from '@/components/projects/new';
+import Project from '@/components/projects/project';
 
 function App() {
   return (
@@ -9,7 +10,7 @@ function App() {
         <Route path="projects">
           <Route index element={<Projects />} />
           <Route path="new" element={<NewProject />} />
-          <Route path=":name" element={<>name</>} />
+          <Route path=":name" element={<Project />} />
         </Route>
       </Routes>
     </Router>
