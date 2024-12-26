@@ -7,7 +7,7 @@ import {
 } from '../config';
 
 export const clickhouseClient = createClient({
-  host: CLICKHOUSE_URL as string,
+  url: CLICKHOUSE_URL as string,
   database: CLICKHOUSE_DB as string,
   username: CLICKHOUSE_USER as string,
   password: CLICKHOUSE_PASSWORD as string,

@@ -12,7 +12,7 @@ export const kafka = new Kafka({
     mechanism: 'plain',
   },
   ssl: {
-    ca: [fs.readFileSync(path.join(__dirname, 'kafka.pem'), 'utf-8')],
+    ca: [fs.readFileSync(path.join('kafka.pem'), 'utf-8')],
   },
 });
 
