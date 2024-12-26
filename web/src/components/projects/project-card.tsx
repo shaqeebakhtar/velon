@@ -1,5 +1,6 @@
 import { ExternalLink, GithubIcon } from 'lucide-react';
 import { Link } from 'react-router';
+import { Skeleton } from '../ui/skeleton';
 
 function ProjectCard() {
   return (
@@ -36,3 +37,18 @@ function ProjectCard() {
 }
 
 export default ProjectCard;
+
+export function ProjectCardSkeleton() {
+  return (
+    <div className="relative border rounded-lg p-5">
+      <div className="space-y-1">
+        <Skeleton className="w-36 h-6" />
+        <Skeleton className="w-28 h-5" />
+      </div>
+      <div className="w-full flex items-center justify-between gap-4 mt-6">
+        <Skeleton className="w-40 h-8" />
+        <Skeleton className="w-14 h-4" />
+      </div>
+    </div>
+  );
+}
