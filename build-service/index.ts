@@ -47,6 +47,21 @@ app.get('/project', async (_, res: Response) => {
   res.status(200).json({ projects });
 });
 
+app.get('/project/:slug', async (req: Request, res: Response) => {
+  const { slug } = req.params;
+
+  const project = await db.project.findUnique({
+    where: {
+      slug,
+    },
+    include: {
+      deployments: true,
+    },
+  });
+
+  res.status(200).json({ project });
+});
+
 app.post('/project', async (req: Request, res: Response) => {
   const { name, gitRepoUrl } = req.body;
 

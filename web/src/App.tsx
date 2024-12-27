@@ -10,7 +10,7 @@ function App() {
         <Route path="projects">
           <Route index element={<Projects />} />
           <Route path="new" element={<NewProject />} />
-          <Route path=":name" element={<Project />} />
+          <Route path=":slug" element={<Project />} />
         </Route>
       </Routes>
     </Router>

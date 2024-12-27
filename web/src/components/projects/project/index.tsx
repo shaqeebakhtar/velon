@@ -6,17 +6,28 @@ import {
   GlobeIcon,
   RotateCwIcon,
 } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useParams } from 'react-router';
 import Deployment from './deployment';
+import { useQuery } from '@tanstack/react-query';
+import { getProjectBySlug } from '@/api/project';
 
 function Project() {
+  const { slug } = useParams<{ slug: string }>();
+
+  const { data: project, isLoading } = useQuery({
+    queryKey: ['project', slug],
+    queryFn: () => getProjectBySlug({ slug: slug as string }),
+  });
+
+  if (isLoading) return null;
+
   return (
     <main className="min-h-screen max-w-screen-xl mx-auto px-3 lg:px-12 py-20 space-y-20">
       <section className="w-full flex items-center justify-between">
         <div className="space-y-3">
           <div className="flex items-center space-x-4">
             <h3 className="text-2xl font-semibold leading-none">
-              Project Name
+              {project?.name}
             </h3>
             <div className="bg-green-500/20 text-green-500 px-2.5 py-1 rounded-full text-xs font-medium">
               Ready
@@ -24,12 +35,12 @@ function Project() {
           </div>
           <div className="flex items-center gap-3 divide-x divide-input">
             <Link
-              to={`/projects/project-name`}
+              to={`http://${project?.slug}.localhost:8000`}
               target="_blank"
               className="flex items-center gap-2 text-muted-foreground text-sm hover:underline w-max relative z-20"
             >
               <GlobeIcon className="size-4" />
-              slug.velon.app
+              {project?.slug}.velon.app
               <ExternalLink className="size-4" />
             </Link>
             <div className="text-xs text-muted-foreground pl-3">
@@ -43,13 +54,16 @@ function Project() {
             Redeploy
           </Button>
           <Link
-            to={'/projects/new'}
+            to={project?.repoUrl as string}
             className={cn(buttonVariants({ variant: 'outline' }), 'h-10')}
           >
             <GithubIcon className="size-4" />
             Repository
           </Link>
-          <Link to={'/projects/new'} className={cn(buttonVariants())}>
+          <Link
+            to={`http://${project?.slug}.localhost:8000`}
+            className={cn(buttonVariants())}
+          >
             <ExternalLink className="size-4" />
             Visit
           </Link>
@@ -58,11 +72,9 @@ function Project() {
       <section className="w-full space-y-6">
         <h3 className="text-2xl font-semibold">Deployments</h3>
         <div className="divide-y divide-input border rounded-lg">
-          <Deployment />
-          <Deployment />
-          <Deployment />
-          <Deployment />
-          <Deployment />
+          {project?.deployments?.map((deployment) => (
+            <Deployment key={deployment.id} deployment={deployment} />
+          ))}
         </div>
       </section>
     </main>

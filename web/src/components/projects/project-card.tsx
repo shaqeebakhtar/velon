@@ -1,5 +1,5 @@
 import { Project } from '@/types/project';
-import { formatDistance, subDays } from 'date-fns';
+import { formatDistance } from 'date-fns';
 import { ExternalLink, GithubIcon } from 'lucide-react';
 import { Link } from 'react-router';
 import { Skeleton } from '../ui/skeleton';
@@ -23,11 +23,11 @@ function ProjectCard({ project }: { project: Project }) {
           <ExternalLink className="size-4" />
         </Link>
       </div>
-      <div className="w-full flex items-center justify-between gap-4 mt-6">
+      <div className="w-full space-y-4 mt-6">
         <Link
           to={`${project.repoUrl}`}
           target="_blank"
-          className="max-w-52 bg-muted px-3 py-1.5 rounded-full flex items-center gap-1.5 text-muted-foreground font-medium hover:bg-muted/80 hover:text-foreground transition-all relative z-20"
+          className="w-full bg-muted px-3 py-1.5 rounded-full flex items-center gap-1.5 text-muted-foreground font-medium hover:bg-muted/80 hover:text-foreground transition-all relative z-20"
         >
           <GithubIcon className="size-4 text-foreground" />
           <span className="text-sm truncate">
@@ -35,7 +35,7 @@ function ProjectCard({ project }: { project: Project }) {
           </span>
         </Link>
         <div className="text-xs text-muted-foreground">
-          {formatDistance(subDays(new Date(), 3), project.createdAt, {
+          {formatDistance(new Date(project.createdAt), new Date(), {
             addSuffix: true,
           })}
         </div>
