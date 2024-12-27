@@ -1,3 +1,4 @@
+import { deployProject } from '@/api/project';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -9,9 +10,12 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
 import { LoaderIcon } from 'lucide-react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import BuildLogs from './build-logs';
 
 const newProjectSchema = z.object({
   name: z.string().min(2).max(50),
@@ -19,12 +23,24 @@ const newProjectSchema = z.object({
 });
 
 function NewProject() {
+  const [deploymentStatus, setDeploymentStatus] = useState('PENDING');
+  const [deploymentId, setDeploymentId] = useState(null);
   const form = useForm<z.infer<typeof newProjectSchema>>({
     resolver: zodResolver(newProjectSchema),
   });
 
+  const { mutate, isPending } = useMutation({
+    mutationFn: deployProject,
+    onSuccess: ({ deployment }) => {
+      setDeploymentStatus(deployment.status);
+      setDeploymentId(deployment.id);
+    },
+  });
+
   function onSubmit(values: z.infer<typeof newProjectSchema>) {
-    console.log(values);
+    mutate({
+      ...values,
+    });
   }
 
   return (
@@ -63,37 +79,23 @@ function NewProject() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isPending || deploymentStatus === 'BUILDING'}
+            >
+              {isPending && <LoaderIcon className="size-4 animate-spin" />}
               Deploy
             </Button>
           </form>
         </Form>
       </section>
-      <section className="rounded-lg border p-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-2xl font-semibold">Build Logs</h3>
-          <div className="flex items-center gap-2">
-            <LoaderIcon className="size-4 animate-spin" />
-            <span className="text-sm text-muted-foreground">
-              Deployment started...
-            </span>
-          </div>
-        </div>
-        <pre className="bg-muted text-green-400 p-4 rounded-sm overflow-x-auto text-sm">
-          <div className="py-0.5">
-            <span className="text-gray-400">
-              [{new Date().toLocaleTimeString()}]
-            </span>{' '}
-            <span className="text-green-400 font-mono">Build started...</span>
-          </div>
-          <div className="py-0.5">
-            <span className="text-gray-400">
-              [{new Date().toLocaleTimeString()}]
-            </span>{' '}
-            <span className="text-green-400 font-mono">Build started...</span>
-          </div>
-        </pre>
-      </section>
+      {deploymentId && !isPending && (
+        <BuildLogs
+          deploymentStatus={deploymentStatus}
+          deploymentId={deploymentId}
+        />
+      )}
     </main>
   );
 }

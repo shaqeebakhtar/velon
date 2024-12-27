@@ -25,7 +25,9 @@ function Projects() {
         {isLoading ? (
           [...Array(4)].map((_, index) => <ProjectCardSkeleton key={index} />)
         ) : projects && projects?.length > 0 ? (
-          projects?.map((project) => <ProjectCard key={project.id} />)
+          projects?.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))
         ) : (
           <div className="col-span-3 h-96 flex items-center justify-center border rounded-lg">
             <p className="text-lg font-medium">No projects found</p>

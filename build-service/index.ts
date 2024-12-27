@@ -24,20 +24,76 @@ import cors from 'cors';
 const port = PORT || 9000;
 const app: Express = express();
 
-const io = new Server();
+const io = new Server({
+  cors: {
+    origin: '*',
+  },
+});
 
 app.use(cors());
 app.use(express.json());
 
+io.on('connection', (socket) => {
+  socket.on('subscribe_logs', (deploymentId) => {
+    socket.join(deploymentId);
+    console.log(`Joined ${deploymentId}`);
+  });
+});
+io.listen(9001);
+
 app.get('/project', async (_, res: Response) => {
   const projects = await db.project.findMany();
 
-  res.status(200).json(projects);
+  res.status(200).json({ projects });
 });
 
 app.post('/project', async (req: Request, res: Response) => {
-  const { repositoryUrl, slug } = req.body;
-  const projectSlug = slug ?? generateSlug();
+  const { name, gitRepoUrl } = req.body;
+
+  let slug = name.split(' ').join('-').toLowerCase();
+
+  // check if slug exists
+  const slugExists = await db.project.findUnique({
+    where: {
+      slug,
+    },
+  });
+
+  if (!!slugExists) {
+    slug = `${slug}-${generateSlug()}`;
+  }
+
+  const project = await db.project.create({
+    data: {
+      name,
+      repoUrl: gitRepoUrl,
+      slug,
+    },
+  });
+
+  res.status(200).json({ project });
+});
+
+app.post('/deploy', async (req: Request, res: Response) => {
+  const { projectId } = req.body;
+
+  const project = await db.project.findUnique({
+    where: {
+      id: projectId,
+    },
+  });
+
+  if (!project) {
+    res.status(404).json({ error: 'Project not found' });
+    return;
+  }
+
+  const deployment = await db.deployment.create({
+    data: {
+      projectId,
+      status: 'BUILDING',
+    },
+  });
 
   const command = new RunTaskCommand({
     cluster: AWS_ECS_CLUSTER as string,
@@ -62,15 +118,15 @@ app.post('/project', async (req: Request, res: Response) => {
           environment: [
             {
               name: 'GIT_REPOSITORY_URL',
-              value: repositoryUrl,
+              value: project.repoUrl,
             },
             {
               name: 'PROJECT_ID',
-              value: projectSlug,
+              value: project.slug,
             },
             {
               name: 'DEPLOYMENT_ID',
-              value: uuidv4(),
+              value: deployment.id,
             },
             {
               name: 'AWS_S3_REGION',
@@ -109,12 +165,25 @@ app.post('/project', async (req: Request, res: Response) => {
   await ecsClient.send(command);
 
   res.status(200).json({
-    status: 'queued',
-    data: {
-      projectSlug,
-      url: `http://${projectSlug}.localhost:8000`,
-    },
+    slug: project.slug,
+    deployment,
   });
+});
+
+app.get('/logs/:deploymentId', async (req: Request, res: Response) => {
+  const { deploymentId } = req.params;
+
+  const logs = await clickhouseClient
+    .query({
+      query: `SELECT log_id, deployment_id, log, timestamp from deployment_logs where deployment_id = {deployment_id:String}`,
+      query_params: {
+        deployment_id: deploymentId,
+      },
+      format: 'JSONEachRow',
+    })
+    .then((logs) => logs.json());
+
+  res.status(200).json({ logs });
 });
 
 const init = async () => {
@@ -150,11 +219,26 @@ const init = async () => {
 
           console.log(query_id);
 
+          io.to(DEPLOYMENT_ID).emit('log', log);
+
           resolveOffset(message.offset);
           await commitOffsetsIfNecessary();
           await heartbeat();
         } catch (error) {
           console.log(error);
+        }
+
+        if (log === 'Deployment completed') {
+          await db.deployment.update({
+            data: {
+              status: 'DEPLOYED',
+            },
+            where: {
+              id: DEPLOYMENT_ID,
+            },
+          });
+
+          io.to(DEPLOYMENT_ID).emit('deployment_success');
         }
       }
     },
@@ -162,11 +246,4 @@ const init = async () => {
 };
 init();
 
-io.on('connection', (socket) => {
-  socket.on('subscribe_logs', (slug) => {
-    socket.join(slug);
-  });
-});
-
 app.listen(port, () => console.log(`Build service is running on port ${port}`));
-io.listen(9001);

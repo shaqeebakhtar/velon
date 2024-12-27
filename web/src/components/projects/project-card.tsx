@@ -1,36 +1,44 @@
+import { Project } from '@/types/project';
+import { formatDistance, subDays } from 'date-fns';
 import { ExternalLink, GithubIcon } from 'lucide-react';
 import { Link } from 'react-router';
 import { Skeleton } from '../ui/skeleton';
 
-function ProjectCard() {
+function ProjectCard({ project }: { project: Project }) {
   return (
     <div className="relative border rounded-lg p-5">
       <Link
         aria-label="Open project"
-        to={'/'}
+        to={`/projects/${project.slug}`}
         className="absolute inset-0 z-10"
       ></Link>
       <div className="space-y-1">
-        <h4 className="font-medium">Project Name</h4>
+        <h4 className="font-medium">{project.name}</h4>
         <Link
-          to={`/projects/project-name`}
+          to={`http://${project.slug}.localhost:8000`}
           target="_blank"
           className="flex items-center gap-2 text-muted-foreground text-sm hover:underline w-max relative z-20"
         >
-          slug.velon.app
+          {project.slug}.velon.app
           <ExternalLink className="size-4" />
         </Link>
       </div>
       <div className="w-full flex items-center justify-between gap-4 mt-6">
         <Link
-          to={`/projects/project-name`}
+          to={`${project.repoUrl}`}
           target="_blank"
           className="max-w-52 bg-muted px-3 py-1.5 rounded-full flex items-center gap-1.5 text-muted-foreground font-medium hover:bg-muted/80 hover:text-foreground transition-all relative z-20"
         >
           <GithubIcon className="size-4 text-foreground" />
-          <span className="text-sm truncate">username/repo</span>
+          <span className="text-sm truncate">
+            {project.repoUrl.split('https://github.com/')[1]}
+          </span>
         </Link>
-        <div className="text-xs text-muted-foreground">35 days ago</div>
+        <div className="text-xs text-muted-foreground">
+          {formatDistance(subDays(new Date(), 3), project.createdAt, {
+            addSuffix: true,
+          })}
+        </div>
       </div>
     </div>
   );
