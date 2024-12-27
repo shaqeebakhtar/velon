@@ -22,7 +22,7 @@ model Deployment {
   id        String  @id @default(cuid())
   project   Project @relation(fields: [projectId], references: [id])
   projectId String
-  status    Status
+  status    Status  @default(PENDING)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
