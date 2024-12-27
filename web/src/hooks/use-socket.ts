@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-// import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import io, { Socket } from 'socket.io-client';
 
-function useSocket({ deploymentId }: { deploymentId: string }) {
+function useSocket({
+  deploymentId,
+  projectSlug,
+}: {
+  deploymentId: string;
+  projectSlug: string;
+}) {
   const [logs, setLogs] = useState<string[]>([]);
-  //   const navigate = useNavigate();
+  const navigate = useNavigate();
   const socket = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -23,7 +29,7 @@ function useSocket({ deploymentId }: { deploymentId: string }) {
     });
 
     socket.current?.on('deployment_success', () => {
-      //   navigate(`/projects/success`);
+      navigate(`/projects/${projectSlug}`);
     });
 
     return () => {

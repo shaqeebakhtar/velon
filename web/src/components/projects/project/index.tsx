@@ -55,6 +55,7 @@ function Project() {
           </Button>
           <Link
             to={project?.repoUrl as string}
+            target="_blank"
             className={cn(buttonVariants({ variant: 'outline' }), 'h-10')}
           >
             <GithubIcon className="size-4" />
@@ -62,6 +63,7 @@ function Project() {
           </Link>
           <Link
             to={`http://${project?.slug}.localhost:8000`}
+            target="_blank"
             className={cn(buttonVariants())}
           >
             <ExternalLink className="size-4" />

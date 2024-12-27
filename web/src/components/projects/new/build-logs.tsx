@@ -4,11 +4,13 @@ import { LoaderIcon } from 'lucide-react';
 function BuildLogs({
   deploymentStatus,
   deploymentId,
+  projectSlug,
 }: {
   deploymentStatus: string;
   deploymentId: string;
+  projectSlug: string;
 }) {
-  const { logs } = useSocket({ deploymentId });
+  const { logs } = useSocket({ deploymentId, projectSlug });
 
   return (
     <section className="rounded-lg border p-8 space-y-6">

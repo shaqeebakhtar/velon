@@ -25,15 +25,17 @@ const newProjectSchema = z.object({
 function NewProject() {
   const [deploymentStatus, setDeploymentStatus] = useState('PENDING');
   const [deploymentId, setDeploymentId] = useState(null);
+  const [projectSlug, setProjectSlug] = useState('');
   const form = useForm<z.infer<typeof newProjectSchema>>({
     resolver: zodResolver(newProjectSchema),
   });
 
   const { mutate, isPending } = useMutation({
     mutationFn: deployProject,
-    onSuccess: ({ deployment }) => {
+    onSuccess: ({ slug, deployment }) => {
       setDeploymentStatus(deployment.status);
       setDeploymentId(deployment.id);
+      setProjectSlug(slug);
     },
   });
 
@@ -90,11 +92,21 @@ function NewProject() {
           </form>
         </Form>
       </section>
-      {deploymentId && !isPending && (
+      {deploymentId && !isPending ? (
         <BuildLogs
           deploymentStatus={deploymentStatus}
           deploymentId={deploymentId}
+          projectSlug={projectSlug}
         />
+      ) : (
+        <section className="rounded-lg border p-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-semibold">Build Logs</h3>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            Start deploying to see the progress here…
+          </p>
+        </section>
       )}
     </main>
   );
